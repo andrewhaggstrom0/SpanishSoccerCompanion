@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Comentario · flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0B0E14; --panel:#121723; --panel-2:#0F1420; --line:#1E2636;
+    --chalk:#E9E7E0; --muted:#8A93A6;
+    --amber:#F2B33D; --red:#E5484D;
+    --new:#5B8DEF; --learning:#F2B33D; --known:#3DD68C;
+    --r:14px;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--body)}
+  body{min-height:100vh;padding:18px 20px 40px}
+  a{color:inherit}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:14px 18px;background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:var(--r)}
+  .title{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em}
+  .title small{display:block;font-family:var(--body);font-weight:500;font-size:11px;
+    letter-spacing:.04em;color:var(--muted);margin-top:1px}
+
+  .tabs{display:flex;gap:4px;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:3px;margin-right:auto}
+  .tab{font-family:var(--display);font-weight:700;font-size:13px;color:var(--muted);text-decoration:none;
+    padding:6px 13px;border-radius:7px;letter-spacing:-.01em}
+  .tab:hover{color:var(--chalk)}
+  .tab.active{background:var(--panel);color:var(--chalk);box-shadow:inset 0 0 0 1px var(--line)}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+
+  /* ---------- phase progress bars (top right) ---------- */
+  .phases{display:flex;flex-direction:column;gap:7px;min-width:230px}
+  .phase{display:flex;align-items:center;gap:9px}
+  .phase .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);width:64px}
+  .phase[data-cat="new"] .lbl{color:var(--new)}
+  .phase[data-cat="learning"] .lbl{color:var(--learning)}
+  .phase[data-cat="known"] .lbl{color:var(--known)}
+  .phase .track{flex:1;height:7px;border-radius:4px;background:var(--ink);border:1px solid var(--line);overflow:hidden}
+  .phase .fill{display:block;height:100%;border-radius:4px;transition:width .35s ease}
+  .phase[data-cat="new"] .fill{background:var(--new)}
+  .phase[data-cat="learning"] .fill{background:var(--learning)}
+  .phase[data-cat="known"] .fill{background:var(--known)}
+  .phase .num{font-family:var(--mono);font-size:12px;color:var(--chalk);width:26px;text-align:right}
+
+  /* ---------- deck picker ---------- */
+  .decks{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+  .deck{font-family:var(--display);font-weight:700;font-size:14px;color:var(--muted);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:11px;
+    padding:10px 16px;cursor:pointer;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .deck:hover{color:var(--chalk);border-color:#2C3650}
+  .deck .dn{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .deck.active{color:var(--chalk);border-color:var(--accent,var(--amber));box-shadow:inset 0 0 0 1px var(--accent,var(--amber))}
+  .deck[data-deck="new"]{--accent:var(--new)} .deck[data-deck="learning"]{--accent:var(--learning)}
+  .deck[data-deck="known"]{--accent:var(--known)} .deck[data-deck="all"]{--accent:var(--amber)}
+
+  /* ---------- stage ---------- */
+  .stage{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:18px}
+  .meta{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:.04em}
+
+  .scene{perspective:1400px;width:min(560px,92vw);height:320px}
+  .flip{position:relative;width:100%;height:100%;cursor:pointer;
+    transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+  .flip.flipped{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;
+    background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    border-top:4px solid var(--accent,var(--new));
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:30px;text-align:center;gap:12px}
+  .face .hint{position:absolute;top:14px;left:0;right:0;font-family:var(--mono);
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .face .pos{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .front .lemma{font-family:var(--display);font-weight:800;font-size:46px;letter-spacing:-.02em;line-height:1}
+  .back{transform:rotateY(180deg)}
+  .back .trans{font-family:var(--display);font-weight:700;font-size:32px;letter-spacing:-.01em;line-height:1.1}
+  .back .ex{font-size:14px;color:var(--muted);font-style:italic;line-height:1.5;max-width:42ch}
+  .back .es-small{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+
+  /* ---------- grade buttons / footer ---------- */
+  .grade{display:flex;gap:14px}
+  .gbtn{font-family:var(--display);font-weight:700;font-size:15px;border-radius:11px;
+    padding:12px 22px;cursor:pointer;border:1px solid var(--line);background:var(--panel-2);
+    display:flex;align-items:center;gap:9px;letter-spacing:-.01em}
+  .gbtn[disabled]{opacity:.35;cursor:default}
+  .gbtn.no{color:var(--red)} .gbtn.no:not([disabled]):hover{border-color:var(--red)}
+  .gbtn.yes{color:var(--known)} .gbtn.yes:not([disabled]):hover{border-color:var(--known)}
+  .gbtn kbd{font-family:var(--mono);font-size:11px;color:var(--muted);
+    border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  .keyhint{font-size:12px;color:var(--muted)}
+  .keyhint kbd{font-family:var(--mono);background:var(--panel-2);border:1px solid var(--line);
+    border-radius:5px;padding:1px 6px;color:var(--chalk)}
+
+  .panel{width:min(560px,92vw);background:var(--panel-2);border:1px solid var(--line);
+    border-radius:18px;padding:40px 28px;text-align:center}
+  .panel h2{font-family:var(--display);font-weight:800;font-size:26px;margin:0 0 8px;letter-spacing:-.02em}
+  .panel p{color:var(--muted);margin:0 0 18px;line-height:1.5}
+  .panel .restart{font-family:var(--display);font-weight:700;font-size:14px;color:var(--chalk);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 20px;cursor:pointer}
+  .panel .restart:hover{border-color:var(--amber)}
+
+  @media(max-width:720px){
+    .phases{order:3;width:100%}
+    .tabs{margin-right:0}
+    .scene{height:260px}
+    .front .lemma{font-size:38px}
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">Comentario<small>flashcards · earn your way to Known</small></div>
+    <nav class="tabs">
+      <a class="tab" href="index.html">Board</a>
+      <a class="tab active" href="flashcards.html">Flashcards</a>
+    </nav>
+    <label class="toggle"><input type="checkbox" id="name-toggle" />show names</label>
+    <label class="toggle"><input type="checkbox" id="untrans-toggle" />show untranslated</label>
+    <div class="phases" id="phases">
+      <div class="phase" data-cat="new"><span class="lbl">New</span><span class="track"><i class="fill" id="fill-new"></i></span><span class="num" id="num-new">0</span></div>
+      <div class="phase" data-cat="learning"><span class="lbl">Learning</span><span class="track"><i class="fill" id="fill-learning"></i></span><span class="num" id="num-learning">0</span></div>
+      <div class="phase" data-cat="known"><span class="lbl">Known</span><span class="track"><i class="fill" id="fill-known"></i></span><span class="num" id="num-known">0</span></div>
+    </div>
+  </header>
+
+  <nav class="decks" id="decks">
+    <button class="deck active" data-deck="all">All cards <span class="dn" id="dn-all">0</span></button>
+    <button class="deck" data-deck="new">New <span class="dn" id="dn-new">0</span></button>
+    <button class="deck" data-deck="learning">Learning <span class="dn" id="dn-learning">0</span></button>
+    <button class="deck" data-deck="known">Brush up <span class="dn" id="dn-known">0</span></button>
+  </nav>
+
+  <main class="stage" id="stage"><!-- card / panel injected here --></main>
+
+<script>
+const USE_PERSISTENCE = true;          // set false in the inline preview
+const POLL_MS = 1500;
+const CATS = ["new","learning","known"];
+const ACCENT = {new:"var(--new)", learning:"var(--learning)", known:"var(--known)"};
+// correct answers needed to leave each stage
+const PROMOTE_AT = {new:1, learning:2};
+
+// ---- demo data (only used when opened without the server) ----
+const SAMPLE = {total_words:412,unique_words:9,words:[
+ {lemma:"gol",pos:"NOUN",pos_label:"noun",count:14,is_function_word:false,translation:"goal",surface_forms:["gol","goles"],example_es:"¡y es el gol que cambia el partido!"},
+ {lemma:"balón",pos:"NOUN",pos_label:"noun",count:31,is_function_word:false,translation:"ball",surface_forms:["balón"],example_es:"recupera el balón en el centro del campo"},
+ {lemma:"marcar",pos:"VERB",pos_label:"verb",count:9,is_function_word:false,translation:"to score, to mark",surface_forms:["marca","marcó","marcando"],example_es:"podría marcar de cabeza si llega"},
+ {lemma:"portero",pos:"NOUN",pos_label:"noun",count:7,is_function_word:false,translation:"goalkeeper",surface_forms:["portero"],example_es:"el portero adelanta su posición"},
+ {lemma:"rápido",pos:"ADJ",pos_label:"adjective",count:6,is_function_word:false,translation:"fast, quick",surface_forms:["rápido","rápida"],example_es:"un contraataque muy rápido por la banda"},
+ {lemma:"banda",pos:"NOUN",pos_label:"noun",count:11,is_function_word:false,translation:"wing, sideline",surface_forms:["banda"],example_es:"abre el juego hacia la banda derecha"},
+ {lemma:"defensa",pos:"NOUN",pos_label:"noun",count:8,is_function_word:false,translation:"defense, defender",surface_forms:["defensa"],example_es:"la defensa se cierra bien"},
+ {lemma:"peligro",pos:"NOUN",pos_label:"noun",count:5,is_function_word:false,translation:"danger",surface_forms:["peligro"],example_es:"esto es peligro puro en el área"},
+ {lemma:"el",pos:"DET",pos_label:"determiner",count:48,is_function_word:true,translation:"the",surface_forms:["el","la","los"],example_es:"el balón al área"},
+]};
+
+const idOf = w => `${w.lemma}__${w.pos}`;
+const state = {
+  words:new Map(),
+  cat:loadCats(),
+  progress:loadProgress(),
+  deckType:"all",
+  deck:[],              // array of ids (snapshot for this run-through)
+  idx:0,
+  flipped:false,
+  session:{reviewed:0, promoted:0},
+};
+
+function loadStore(key){
+  if(!USE_PERSISTENCE) return {};
+  try{ return JSON.parse(localStorage.getItem(key)||"{}"); }catch(e){ return {}; }
+}
+function saveStore(key, obj){
+  if(!USE_PERSISTENCE) return;
+  try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){}
+}
+function loadCats(){ return loadStore("vocabCats"); }
+function saveCats(){ saveStore("vocabCats", state.cat); }
+function loadProgress(){ return loadStore("vocabProgress"); }
+function saveProgress(){ saveStore("vocabProgress", state.progress); }
+
+function catOf(id){ return state.cat[id] || "new"; }
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+// A pair is "untranslated" when argos left it unchanged (es == en) or hasn't
+// translated it yet (empty) — those make useless flashcards, so hide by default.
+function isUntranslated(w){
+  const t = (w.translation||"").trim().toLowerCase();
+  return !t || t === (w.lemma||"").trim().toLowerCase();
+}
+
+// studyable = real vocab; function words are always skipped. Names (PROPN) and
+// untranslated pairs are hidden unless their toggle is on.
+function studyable(){
+  const showNames = document.getElementById("name-toggle").checked;
+  const showUntrans = document.getElementById("untrans-toggle").checked;
+  return [...state.words.values()].filter(w =>
+    !w.is_function_word &&
+    (showNames || w.pos !== "PROPN") &&
+    (showUntrans || !isUntranslated(w)));
+}
+
+async function poll(){
+  try{
+    const r = await fetch("vocab.json?_="+Date.now(), {cache:"no-store"});
+    if(!r.ok) throw 0;
+    merge(await r.json());
+  }catch(e){
+    if(state.words.size===0) merge(SAMPLE);
+  }
+  // Build the first deck once we have words; afterwards leave the active run alone.
+  if(state.deck.length===0 && state.idx===0 && !state._started) buildDeck(state.deckType);
+  renderChrome();
+}
+function merge(data){
+  for(const w of (data.words||[])){
+    const id = idOf(w);
+    state.words.set(id, w);
+    if(!(id in state.cat)) state.cat[id] = "new";
+  }
+}
+
+// ---------- deck ----------
+function deckMembers(type){
+  const pool = studyable();
+  if(type==="all") return pool;
+  return pool.filter(w => catOf(idOf(w))===type);
+}
+function buildDeck(type){
+  state.deckType = type;
+  state._started = true;
+  const ids = deckMembers(type).map(idOf);
+  for(let i=ids.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [ids[i],ids[j]]=[ids[j],ids[i]]; }
+  state.deck = ids;
+  state.idx = 0;
+  state.flipped = false;
+  state.session = {reviewed:0, promoted:0};
+  renderChrome();
+  renderStage();
+}
+
+// ---------- grading ----------
+function grade(correct){
+  if(!state.flipped) return;                 // must flip before grading
+  const id = state.deck[state.idx];
+  if(!id) return;
+  const before = catOf(id);
+  let cat = before, prog = state.progress[id]||0;
+
+  if(correct){
+    prog += 1;
+    if(cat in PROMOTE_AT && prog >= PROMOTE_AT[cat]){
+      cat = cat==="new" ? "learning" : "known";
+      prog = 0;
+    }
+  }else{
+    cat = cat==="known" ? "learning" : cat==="learning" ? "new" : "new";
+    prog = 0;
+  }
+  state.cat[id] = cat;
+  state.progress[id] = prog;
+  saveCats(); saveProgress();
+
+  state.session.reviewed += 1;
+  if(CATS.indexOf(cat) > CATS.indexOf(before)) state.session.promoted += 1;
+
+  state.idx += 1;
+  state.flipped = false;
+  renderChrome();
+  renderStage();
+}
+function flip(){
+  if(!state.deck[state.idx]) return;
+  state.flipped = !state.flipped;
+  renderStage();
+}
+
+// ---------- render ----------
+function renderChrome(){
+  // phase bars: share of all studyable words currently in each category
+  const pool = studyable();
+  const tally = {new:0, learning:0, known:0};
+  for(const w of pool) tally[catOf(idOf(w))]++;
+  const total = Math.max(1, pool.length);
+  for(const c of CATS){
+    document.getElementById("num-"+c).textContent = tally[c];
+    document.getElementById("fill-"+c).style.width = (tally[c]/total*100)+"%";
+  }
+  // deck counts + active state
+  document.getElementById("dn-all").textContent = pool.length;
+  for(const c of CATS) document.getElementById("dn-"+c).textContent = deckMembers(c).length;
+  document.querySelectorAll(".deck").forEach(b=>b.classList.toggle("active", b.dataset.deck===state.deckType));
+}
+
+function renderStage(){
+  const stage = document.getElementById("stage");
+  const total = state.deck.length;
+
+  if(total===0){
+    stage.innerHTML = `<div class="panel"><h2>Nothing to study</h2>
+      <p>No words in this deck yet. Pick another deck, or play a match so new words come in.</p></div>`;
+    return;
+  }
+  if(state.idx >= total){
+    const s = state.session;
+    stage.innerHTML = `<div class="panel"><h2>Deck complete 🎉</h2>
+      <p>Reviewed <b>${s.reviewed}</b> card${s.reviewed===1?"":"s"} · <b>${s.promoted}</b> promoted.</p>
+      <button class="restart" id="restart">Shuffle &amp; study again</button></div>`;
+    document.getElementById("restart").onclick = ()=>buildDeck(state.deckType);
+    return;
+  }
+
+  const w = state.words.get(state.deck[state.idx]);
+  if(!w){ state.idx++; return renderStage(); }   // word vanished (rare); skip
+  const accent = ACCENT[catOf(idOf(w))];
+  const trans = w.translation ? esc(w.translation) : "—";
+  const ex = w.example_es ? `<div class="ex">“${esc(w.example_es)}”</div>` : "";
+
+  stage.innerHTML = `
+    <div class="meta">card ${state.idx+1} / ${total} · ${state.deckType==="known"?"brush up":state.deckType} deck</div>
+    <div class="scene">
+      <div class="flip ${state.flipped?"flipped":""}" id="flip" style="--accent:${accent}">
+        <div class="face front">
+          <div class="hint">Spanish</div>
+          <div class="lemma">${esc(w.lemma)}</div>
+          <div class="pos">${esc(w.pos_label)}</div>
+        </div>
+        <div class="face back">
+          <div class="hint">English</div>
+          <div class="trans">${trans}</div>
+          ${ex}
+          <div class="es-small">${esc(w.lemma)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="grade">
+      <button class="gbtn no" id="g-no" ${state.flipped?"":"disabled"}><kbd>←</kbd> Don't know</button>
+      <button class="gbtn yes" id="g-yes" ${state.flipped?"":"disabled"}>Know <kbd>→</kbd></button>
+    </div>
+    <div class="keyhint"><kbd>Space</kbd> flip${state.flipped?" · then <kbd>←</kbd> / <kbd>→</kbd> to grade":" the card to reveal the translation"}</div>`;
+
+  document.getElementById("flip").onclick = flip;
+  document.getElementById("g-no").onclick = ()=>grade(false);
+  document.getElementById("g-yes").onclick = ()=>grade(true);
+}
+
+// ---------- input ----------
+document.getElementById("decks").addEventListener("click", e=>{
+  const b = e.target.closest(".deck"); if(!b) return;
+  buildDeck(b.dataset.deck);
+});
+document.getElementById("name-toggle").addEventListener("change", ()=>buildDeck(state.deckType));
+document.getElementById("untrans-toggle").addEventListener("change", ()=>buildDeck(state.deckType));
+document.addEventListener("keydown", e=>{
+  if(e.code==="Space"){ e.preventDefault(); flip(); return; }
+  if(e.key==="ArrowLeft"){ if(state.flipped){ e.preventDefault(); grade(false); } return; }
+  if(e.key==="ArrowRight"){ if(state.flipped){ e.preventDefault(); grade(true); } return; }
+});
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

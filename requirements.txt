@@ -1,0 +1,19 @@
+# === Live Spanish-commentary vocab tracker (Apple Silicon) ===
+
+# --- Audio capture from BlackHole loopback ---
+sounddevice>=0.4.6
+numpy>=1.24
+scipy>=1.11          # resample 48k -> 16k
+
+# --- Speech-to-text (Apple Silicon / Metal) ---
+mlx-whisper>=0.4.0   # primary backend, runs on the M-series GPU
+# faster-whisper is an optional CPU fallback:
+# faster-whisper>=1.0.0
+
+# --- NLP: lemmatization + POS tagging ---
+spacy>=3.7.0
+# Spanish model installed separately:
+#   python -m spacy download es_core_news_md
+
+# --- Translation (offline, no API key) ---
+argostranslate>=1.9.0
